@@ -1,0 +1,16 @@
+{
+  "name": "civicwatch",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/web"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace @civicwatch/web",
+    "build": "npm run build --workspace @civicwatch/web",
+    "typecheck": "npm run typecheck --workspace @civicwatch/web"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
