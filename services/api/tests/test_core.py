@@ -27,3 +27,29 @@ def test_zone_crud():
 def test_incident_status_rejects_invalid_value():
     response = client.patch('/api/incidents/missing/status', json={'status':'Guilty'})
     assert response.status_code == 400
+
+
+def test_jobs_endpoint_returns_a_list():
+    response = client.get('/api/jobs')
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
+
+def test_upload_rejects_non_video_file():
+    response = client.post(
+        '/api/jobs/analyse',
+        files={'file': ('notes.txt', b'not a video', 'text/plain')},
+        data={'zone_ids': '[]'},
+    )
+    assert response.status_code == 415
+
+def test_zone_rejects_out_of_range_coordinates():
+    response = client.post(
+        '/api/zones',
+        json={
+            'name': 'Invalid zone',
+            'zone_type': 'no_parking',
+            'points': [[0, 0], [1200, 0], [100, 100]],
+            'dwell_seconds': 10,
+        },
+    )
+    assert response.status_code == 400
