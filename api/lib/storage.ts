@@ -1,10 +1,10 @@
 import { del, get, head, issueSignedToken, list, presignUrl, put } from "@vercel/blob";
 
 export function requireBlobStore(): void {
-  // Deployed Vercel Functions use project-scoped OIDC for private Blob by default.
-  // A read-write token is only needed for local or external development.
-  if (!process.env.VERCEL && !process.env.VERCEL_OIDC_TOKEN && !process.env.BLOB_READ_WRITE_TOKEN) {
-    throw new Error("Run through Vercel or configure VERCEL_OIDC_TOKEN / BLOB_READ_WRITE_TOKEN.");
+  // Private Blob data operations can use Vercel OIDC, but the client-upload
+  // token exchange in @vercel/blob/client currently requires this server secret.
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    throw new Error("Connect a private Vercel Blob store and add BLOB_READ_WRITE_TOKEN to this project.");
   }
 }
 export async function saveJson<T>(pathname: string, value: T): Promise<void> {
