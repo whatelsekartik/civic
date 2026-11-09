@@ -5,7 +5,7 @@ cd "$ROOT"
 PYTHON="${PYTHON:-python3}"
 if ! command -v "$PYTHON" >/dev/null 2>&1; then echo 'Python 3 is required. Install it from python.org or Homebrew.'; exit 1; fi
 if ! command -v node >/dev/null 2>&1; then echo 'Node.js 20+ is required. Install it from nodejs.org or Homebrew.'; exit 1; fi
-if [ "$(node -p 'Number(process.versions.node.split(".")[0])')" -lt 20 ]; then echo 'Node.js 20 or newer is required.'; exit 1; fi
+if [ "$(node -p 'Number(process.versions.node.split(".")[0])')" -lt 22 ]; then echo 'Node.js 22 or newer is required.'; exit 1; fi
 if [ ! -d .venv ]; then "$PYTHON" -m venv .venv; fi
 source .venv/bin/activate
 python -m pip install --upgrade pip
