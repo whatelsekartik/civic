@@ -1,7 +1,7 @@
 {
   "name": "@civicwatch/web",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
@@ -9,16 +9,16 @@
     "typecheck": "tsc -b"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "latest",
     "lucide-react": "^0.468.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "recharts": "^2.15.0"
   },
   "devDependencies": {
+    "@vitejs/plugin-react": "4.7.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "typescript": "^5.7.2",
-    "vite": "^6.0.5"
+    "vite": "6.4.5"
   }
 }
