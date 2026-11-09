@@ -336,7 +336,7 @@ export default function App() {
                 <div className="cw-checks"><span><CheckCircle2 size={15} /> MP4 / MOV / AVI support</span><span><CheckCircle2 size={15} /> YOLO object detection</span><span><CheckCircle2 size={15} /> ByteTrack tracking</span><span><CheckCircle2 size={15} /> Human-reviewed incidents</span></div>
               </section>
               <section className="cw-panel">
-                <div className="cw-panel-title"><div><h2>Local AI engine</h2><p>Runtime status from Vercel</p></div><span className={"cw-pill " + (online ? "good" : "bad")}>{online ? "Connected" : "Offline"}</span></div>
+                <div className="cw-panel-title"><div><h2>Cloud AI engine</h2><p>Runtime status from Vercel</p></div><span className={"cw-pill " + (online ? "good" : "bad")}>{online ? "Connected" : "Offline"}</span></div>
                 <div className="cw-system-row"><span>API service</span><b>{online ? "Running" : "Not running"}</b></div>
                 <div className="cw-system-row"><span>Compute</span><b>{system?.compute || "—"}</b></div>
                 <div className="cw-system-row"><span>Vehicle model</span><b>{system?.models?.detector || "—"}</b></div>
