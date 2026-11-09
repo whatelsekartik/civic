@@ -8,7 +8,8 @@
   "scripts": {
     "dev": "npm run dev --workspace @civicwatch/web",
     "build": "npm run build --workspace @civicwatch/web",
-    "typecheck": "npm run typecheck --workspace @civicwatch/web"
+    "typecheck": "npm run typecheck --workspace @civicwatch/web",
+    "typecheck:api": "tsc --noEmit -p tsconfig.api.json"
   },
   "engines": {
     "node": "22.x"
@@ -17,5 +18,9 @@
     "@vercel/blob": "^2.8.2",
     "@vercel/queue": "^0.11.0",
     "@vercel/sandbox": "^3.9.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.30",
+    "typescript": "^5.7.2"
   }
 }
