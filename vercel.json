@@ -4,6 +4,18 @@
   "buildCommand": "npm run build",
   "outputDirectory": "apps/web/dist",
   "installCommand": "npm install",
+  "functions": {
+    "api/queues/analyse.ts": {
+      "maxDuration": 300,
+      "experimentalTriggers": [
+        {
+          "type": "queue/v2beta",
+          "topic": "civicwatch-analysis",
+          "retryAfterSeconds": 60
+        }
+      ]
+    }
+  },
   "rewrites": [
     {
       "source": "/(.*)",
