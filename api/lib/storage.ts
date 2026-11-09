@@ -37,7 +37,7 @@ export async function blobMetadata(pathname: string) {
 }
 export async function deleteBlob(pathname: string): Promise<void> {
   requireBlobStore();
-  await del(pathname, { access: "private" });
+  await del(pathname);
 }
 export async function signedBlobUrl(pathname: string, operation: "get" | "put", validForMs: number): Promise<string> {
   requireBlobStore();
