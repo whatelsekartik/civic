@@ -9,14 +9,15 @@ if [[ ! -x "$ROOT/.venv/bin/python" || ! -x "$ROOT/node_modules/.bin/vite" ]]; t
   echo "CivicWatch is not installed yet. Run ./scripts/setup-mac.sh first."
   exit 1
 fi
-if ! command -v node >/dev/null 2>&1; then
-  echo "Node.js 22 is missing. Run ./scripts/setup-mac.sh."
-  exit 1
-fi
-if [[ "$(node -p 'Number(process.versions.node.split(".")[0])')" -ne 22 ]]; then
-  if command -v brew >/dev/null 2>&1 && [[ -d "$(brew --prefix node@22 2>/dev/null || true)" ]]; then
-    export PATH="$(brew --prefix node@22)/bin:$PATH"
+if command -v brew >/dev/null 2>&1; then
+  NODE22_PREFIX="$(brew --prefix node@22 2>/dev/null || true)"
+  if [[ -n "$NODE22_PREFIX" && -x "$NODE22_PREFIX/bin/node" ]]; then
+    export PATH="$NODE22_PREFIX/bin:$PATH"
   fi
+fi
+if ! command -v node >/dev/null 2>&1 || [[ "$(node -p 'Number(process.versions.node.split(".")[0])')" -ne 22 ]]; then
+  echo "Node.js 22 is required. Run ./scripts/setup-mac.sh first."
+  exit 1
 fi
 
 mkdir -p "$DATA"
