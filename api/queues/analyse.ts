@@ -17,7 +17,15 @@ export const POST = handleCallback(async (message: QueueMessage) => {
   const jobPath = JOB_PREFIX + jobId + ".json";
   const job = await readJson<Job>(jobPath);
   if (!job) throw new Error("Queued CivicWatch job was not found: " + jobId);
-  if (job.status === "completed" || job.status === "failed" || job.status === "processing" || job.status === "provisioning") {
+  if (job.status === "completed" || job.status === "failed" || job.status === "processing") return;
+  if (job.status === "provisioning") {
+    const age = job.startedAt ? Date.now() - Date.parse(job.startedAt) : 0;
+    if (age < 5 * 60 * 1000) return;
+    job.status = "failed";
+    job.error = "Cloud worker provisioning timed out before the Sandbox could start.";
+    job.message = job.error;
+    job.updatedAt = new Date().toISOString();
+    await saveJson(jobPath, job);
     return;
   }
 
@@ -71,18 +79,18 @@ export const POST = handleCallback(async (message: QueueMessage) => {
       },
     ]);
 
-    await sandbox.runCommand({
-      cmd: "python3",
-      args: ["/vercel/sandbox/worker.py"],
-      detached: true,
-    });
-
     job.status = "processing";
     job.progress = 0;
     job.message = "Cloud worker started. Installing the vision stack and preparing footage…";
     job.sandboxName = sandbox.name;
     job.updatedAt = new Date().toISOString();
     await saveJson(jobPath, job);
+
+    await sandbox.runCommand({
+      cmd: "python3",
+      args: ["/vercel/sandbox/worker.py"],
+      detached: true,
+    });
   } catch (error) {
     job.status = "queued";
     job.error = error instanceof Error ? error.message : "Could not start the Vercel Sandbox.";
@@ -91,4 +99,10 @@ export const POST = handleCallback(async (message: QueueMessage) => {
     await saveJson(jobPath, job);
     throw error;
   }
+}, {
+  visibilityTimeoutSeconds: 300,
+  retry: (_error, metadata) => {
+    if (metadata.deliveryCount > 8) return { acknowledge: true };
+    return { afterSeconds: Math.min(300, 10 * 2 ** Math.max(0, metadata.deliveryCount - 1)) };
+  },
 });
