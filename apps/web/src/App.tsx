@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 import {
-  Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, Bell, Camera,
-  CheckCircle2, ChevronDown, CircleHelp, Clock3, Command, Download,
-  ExternalLink, FileCheck2, Filter, Gauge, HardDrive, LayoutDashboard,
-  MapPin, Menu, MoreHorizontal, Play, Plus, Radio, Search, Settings,
-  ShieldCheck, Siren, SlidersHorizontal, Sparkles, Video, Wifi, X
+  Activity, AlertTriangle, ArrowUpRight, Bell, Camera,
+  CheckCircle2, ChevronDown, CircleHelp, Clock3, Download,
+  FileCheck2, Filter, HardDrive, LayoutDashboard,
+  MapPin, Menu, MoreHorizontal, Plus, Radio, Search, Settings,
+  ShieldCheck, SlidersHorizontal, Sparkles, Wifi, X
 } from "lucide-react";
 
 type Status = "Pending review" | "Verified" | "Forwarded" | "Resolved" | "Dismissed";
