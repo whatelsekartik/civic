@@ -36,7 +36,7 @@ def device_name() -> str:
 def model_status() -> dict[str, Any]:
     return {
         "detector": "available" if YOLO else "dependency_missing",
-        "weights": "installed" if MODEL_PATH.is_file() else "download_on_first_analysis",
+        "weights": "installed" if MODEL_PATH.is_file() else "not_installed",
         "weights_path": str(MODEL_PATH),
         "device": device_name(),
         "tracking": "ByteTrack",
@@ -124,6 +124,7 @@ def analyse_video(
     vehicle_class_ids = {2, 3, 5, 7}
     frames_done = 0
     started = time.monotonic()
+    compute_device = device_name()
     snapshots = output_dir / "snapshots"
     snapshots.mkdir(parents=True, exist_ok=True)
 
@@ -137,7 +138,7 @@ def analyse_video(
                 frame,
                 persist=True,
                 tracker="bytetrack.yaml",
-                device=device_name(),
+                device=compute_device,
                 conf=0.35,
                 imgsz=640,
                 verbose=False,
