@@ -1,13 +1,57 @@
 #!/bin/bash
 set -euo pipefail
-ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+DATA="$HOME/.civicwatch"
 cd "$ROOT"
-mkdir -p "$HOME/.civicwatch"
-if lsof -nP -iTCP:8000 -sTCP:LISTEN >/dev/null 2>&1; then echo 'Port 8000 is already in use. Stop that process or change CIVICWATCH_PORT.'; exit 1; fi
-if lsof -nP -iTCP:5173 -sTCP:LISTEN >/dev/null 2>&1; then echo 'Port 5173 is already in use. Stop that process or change the frontend port.'; exit 1; fi
-source .venv/bin/activate
-(cd services/api && nohup python run.py > "$HOME/.civicwatch/api.log" 2>&1 & echo $! > "$HOME/.civicwatch/api.pid")
-(cd apps/web && nohup npm run dev -- --host 127.0.0.1 > "$HOME/.civicwatch/web.log" 2>&1 & echo $! > "$HOME/.civicwatch/web.pid")
-for i in $(seq 1 40); do if curl -fsS http://127.0.0.1:8000/api/health >/dev/null && curl -fsS http://127.0.0.1:5173 >/dev/null; then open http://127.0.0.1:5173; echo 'CivicWatch is running at http://127.0.0.1:5173'; exit 0; fi; sleep 1; done
-echo 'Startup health check failed. Inspect ~/.civicwatch/api.log and web.log.'
+
+if [[ ! -x "$ROOT/.venv/bin/python" || ! -x "$ROOT/node_modules/.bin/vite" ]]; then
+  echo "CivicWatch is not installed yet. Run ./scripts/setup-mac.sh first."
+  exit 1
+fi
+if ! command -v node >/dev/null 2>&1; then
+  echo "Node.js 22 is missing. Run ./scripts/setup-mac.sh."
+  exit 1
+fi
+if [[ "$(node -p 'Number(process.versions.node.split(".")[0])')" -ne 22 ]]; then
+  if command -v brew >/dev/null 2>&1 && [[ -d "$(brew --prefix node@22 2>/dev/null || true)" ]]; then
+    export PATH="$(brew --prefix node@22)/bin:$PATH"
+  fi
+fi
+
+mkdir -p "$DATA"
+if curl -fsS http://127.0.0.1:8000/api/health >/dev/null 2>&1 && curl -fsS http://127.0.0.1:5173 >/dev/null 2>&1; then
+  open http://127.0.0.1:5173
+  echo "CivicWatch is already running at http://127.0.0.1:5173"
+  exit 0
+fi
+for port in 8000 5173; do
+  if lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
+    echo "Port $port is already in use. Stop the other app or close it before starting CivicWatch."
+    exit 1
+  fi
+done
+
+cd "$ROOT/services/api"
+nohup "$ROOT/.venv/bin/python" run.py > "$DATA/api.log" 2>&1 &
+echo $! > "$DATA/api.pid"
+
+cd "$ROOT/apps/web"
+nohup npm run dev -- --host 127.0.0.1 > "$DATA/web.log" 2>&1 &
+echo $! > "$DATA/web.pid"
+
+for attempt in $(seq 1 45); do
+  if curl -fsS http://127.0.0.1:8000/api/health >/dev/null 2>&1 && curl -fsS http://127.0.0.1:5173 >/dev/null 2>&1; then
+    open http://127.0.0.1:5173
+    echo "CivicWatch is running at http://127.0.0.1:5173"
+    echo "API diagnostics: http://127.0.0.1:8000/docs"
+    echo "Logs: $DATA/api.log and $DATA/web.log"
+    exit 0
+  fi
+  sleep 1
+done
+
+echo "CivicWatch did not start correctly."
+echo "API log: $DATA/api.log"
+echo "Web log: $DATA/web.log"
 exit 1
