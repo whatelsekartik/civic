@@ -26,7 +26,9 @@ export async function listJson<T>(prefix: string): Promise<T[]> {
   do {
     const page = await list({ prefix, limit: 1000, cursor });
     const records = await Promise.all(page.blobs.map((blob) => readJson<T>(blob.pathname)));
-    output.push(...records.filter((record): record is T => record !== null));
+    for (const record of records) {
+      if (record !== null) output.push(record as T);
+    }
     cursor = page.hasMore ? page.cursor : undefined;
   } while (cursor);
   return output;
