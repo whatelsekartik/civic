@@ -43,7 +43,7 @@ export async function signedBlobUrl(pathname: string, operation: "get" | "put", 
   requireBlobStore();
   const validUntil = Date.now() + validForMs;
   const token = await issueSignedToken({ pathname, operations: [operation], validUntil });
-  const signed = await presignUrl(token, { pathname, operation, validUntil });
+  const signed = await presignUrl(token, { pathname, operation, validUntil, access: "private" });
   return signed.presignedUrl;
 }
 export function recordPath(kind: "jobs" | "zones" | "incidents", id: string): string {
