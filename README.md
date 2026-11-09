@@ -1,63 +1,61 @@
 # CivicWatch
 
-**A local-first civic monitoring prototype.** Use recorded road CCTV footage, define monitoring zones, run vehicle detection and tracking on your Mac, then review potential incidents.
+**CivicWatch is a Vercel-hosted civic video review prototype.** Upload recorded road/CCTV footage, draw monitoring zones, run vehicle detection in an isolated cloud Sandbox, then review potential incident candidates and annotated footage.
 
-The MVP is designed around authorised existing CCTV/NVR infrastructure. CivicBot is a possible future extension; it is not required to use this app.
+There is no Mac-side service in the cloud deployment. The browser, API, private file storage, queue and Python inference worker all run through Vercel.
 
-## Run it on macOS
+## Deploy and configure Vercel
 
-1. Download this repository as a ZIP and extract it, or clone it:
-   `git clone https://github.com/whatelsekartik/civic.git`
-2. Open Terminal and move into the extracted `civic` folder.
-3. Run the one-time installer:
+1. Import this GitHub repository into Vercel: https://github.com/whatelsekartik/civic. Keep the project root at the repository root. The checked-in vercel.json configures the Vite build, API functions and the private Queue consumer.
+2. In the project's **Storage** tab, create a **Private Vercel Blob** store and connect it to this project. Vercel adds BLOB_READ_WRITE_TOKEN to the selected environments. This is required for private file operations and secure browser-upload tokens.
+3. Enable Vercel Queues for the project/account if the dashboard prompts you. The route api/queues/analyse.ts is registered as a push consumer for the civicwatch-analysis topic.
+4. In **Project → Settings → Environment Variables**, add these variables to Production and Preview:
 
-   ```bash
-   chmod +x scripts/*.sh
-   ./scripts/setup-mac.sh
-   ```
+   | Variable | What to set |
+   |---|---|
+   | CIVICWATCH_ACCESS_KEY | A strong private sign-in key you choose |
+   | CIVICWATCH_SESSION_SECRET | A separate random secret with at least 32 characters |
+   | CIVICWATCH_INTERNAL_SECRET | Another separate random secret, used only for Sandbox callbacks |
+   | CIVICWATCH_SANDBOX_VCPUS | Optional: 2 (supported settings: 1, 2 or 4) |
+   | CIVICWATCH_SANDBOX_TIMEOUT_MS | Optional: 2700000 (45 minutes, the Hobby Sandbox maximum) |
 
-4. Start the app:
+   Do not add secret values to GitHub or the source code. Keep BLOB_READ_WRITE_TOKEN server-side; the browser receives only a constrained upload token.
+5. Redeploy after connecting Blob and setting the environment variables.
 
-   ```bash
-   ./scripts/start.sh
-   ```
+For a click-by-click setup and troubleshooting checklist, see docs/VERCEL_DEPLOYMENT.md.
 
-5. Open **http://127.0.0.1:5173**. To stop it, run `./scripts/stop.sh`.
+## Use CivicWatch
 
-The installer provisions Python 3.12 and Node.js 22 (using Homebrew if needed), installs dependencies and downloads the YOLO11 nano model. The first installation needs an internet connection. It can take a while because PyTorch and the model weights are large.
+1. Open the deployed Vercel URL and sign in with your CIVICWATCH_ACCESS_KEY.
+2. Open **Analyse video** and select an MP4, MOV, AVI, MKV or M4V road recording (maximum 500 MB in this prototype).
+3. Click at least three points on the video preview to draw a polygon around the zone to monitor.
+4. Name the zone, set its category and stillness threshold, save it, and select it for this recording.
+5. Click **Upload & analyse in Vercel**. The browser uploads directly to private Blob; a Queue message starts a Python 3.13 Sandbox.
+6. Track the job, download the annotated MP4 and review candidate incidents in **Incident desk**.
 
-You can also double-click the three `.command` launchers inside the `scripts/` folder after macOS allows them to run.
+The Vercel Sandbox runs YOLO11 nano and ByteTrack on CPU. The prototype creates candidate incidents for tracked vehicles that remain still inside a selected zone. It uses pixel movement as a heuristic; it is not calibrated speed measurement.
 
-## The first video
+## Cloud architecture
 
-1. Open **Analyse video** and choose an MP4, MOV, AVI, MKV or M4V recording (up to 500 MB by default).
-2. In the video preview, click at least three points around the area to monitor.
-3. Name the zone, choose its type and stillness threshold, then select **Save drawn zone**.
-4. Select the zone and click **Upload & analyse video**.
-5. Watch the progress panel. When complete, download the annotated MP4 and review any incident candidates in **Incident desk**.
+- **Vercel Functions:** authenticated API, job state, zone and incident endpoints.
+- **Private Vercel Blob:** uploaded recordings, JSON records, evidence snapshots and annotated videos.
+- **Vercel Queues:** durable background-job delivery and retries.
+- **Vercel Sandbox:** isolated Python 3.13 runtime that installs the CPU vision stack and processes the video.
+- **React + Vite:** dashboard and video review UI.
 
-Zones use normalised coordinates and should only be reused with footage from the same fixed camera position and framing. Without a zone, the app can annotate tracked vehicles but will not create zone-based incident candidates.
+## What is not implemented yet
 
-## What is included
+- The detector currently handles common vehicles from the general YOLO model. Dedicated pothole and waste models are **not installed**.
+- No live RTSP/NVR camera connector is included. Upload a recording you are authorised to access.
+- Stillness is estimated through pixel displacement; no calibrated road speed or legal offence determination is made.
+- Incidents are review candidates only. An operator must verify evidence before anything is forwarded.
+- The login is a **single shared access key**, not per-person accounts or role-based access control.
+- This is a prototype data model using JSON records in Blob, not a multi-tenant relational database or production audit system.
 
-- React + Vite dashboard connected to a local FastAPI API.
-- Local video upload, background analysis jobs and progress polling.
-- YOLO11 vehicle detection and ByteTrack object tracking.
-- Click-to-draw polygon zones and zone dwell/stillness candidate rules.
-- Annotated video output, evidence snapshots, SQLite incidents and status review.
-- CSV export of the incident desk.
-- Local runtime diagnostics at **http://127.0.0.1:8000/docs**.
+## Runtime and cost considerations
 
-## Important limitations
+Cloud inference uses CPU, not a GPU. Vercel Sandbox sessions on Hobby have a 45-minute maximum and up to 4 vCPUs (2 GB RAM per vCPU). Large recordings or first-run package installation can take substantial time; start with short, low-resolution clips. Sandbox CPU, memory and storage usage can incur charges or exhaust included usage. Review your Vercel plan and current usage before processing a large batch.
 
-- Vehicle stillness is estimated using pixel displacement over a short tracking window. It is **not calibrated speed measurement** and should be tuned for each camera.
-- Candidates are not legally established offences. A person must inspect evidence before any report is forwarded.
-- The included pretrained model detects common objects such as cars, motorcycles, buses and trucks. Dedicated pothole and waste models are not installed.
-- Live RTSP camera ingestion, multi-user access control, calibrated speed detection, automatic department forwarding and CivicBot hardware are not implemented in this MVP.
-- Video and SQLite data stay on the local machine under `~/.civicwatch/`; model weights are stored in the repository's ignored `models/` directory.
+## Privacy and safety
 
-## Vercel
-
-Vercel can host the static dashboard preview, but it does **not** run the local FastAPI video processor or access your Mac's files/cameras. Use the local startup steps above for the working upload and inference workflow. Do not expose the local API publicly.
-
-See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for architecture, troubleshooting and configuration.
+Use a **Private** Blob store. Only upload footage you are authorised to process. The app does not use face recognition or issue challans. Keep access keys private, review retention requirements, and require a human decision before forwarding any incident.
