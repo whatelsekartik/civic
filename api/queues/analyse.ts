@@ -48,7 +48,8 @@ export const POST = handleCallback(async (message: QueueMessage) => {
       Math.max(Number(process.env.CIVICWATCH_SANDBOX_TIMEOUT_MS || 45 * 60 * 1000), 5 * 60 * 1000),
       24 * 60 * 60 * 1000,
     );
-    const vcpus = Math.min(4, Math.max(1, Math.floor(Number(process.env.CIVICWATCH_SANDBOX_VCPUS || 2))));
+    const requestedVcpus = Math.floor(Number(process.env.CIVICWATCH_SANDBOX_VCPUS || 2));
+    const vcpus = requestedVcpus >= 4 ? 4 : requestedVcpus >= 2 ? 2 : 1;
     const callbackUrl = "https://" + deploymentHost;
 
     const [inputUrl, outputPutUrl] = await Promise.all([
