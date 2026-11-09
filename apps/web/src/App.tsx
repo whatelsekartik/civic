@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import {
   Activity, AlertCircle, ArrowDownToLine, ArrowUpRight, CheckCircle2,
-  ChevronRight, CircleHelp, Clapperboard, Clock3, CloudUpload, FileVideo2,
+  ChevronRight, Clapperboard, CloudUpload, FileVideo2,
   FolderOpen, HardDrive, LayoutDashboard, LoaderCircle, MapPin, Pause,
   Play, Plus, RefreshCw, ShieldCheck, Trash2, Upload, Wifi, X
 } from "lucide-react";
@@ -136,7 +136,7 @@ export default function App() {
     setNotice("");
   }
 
-  function addZonePoint(event: React.MouseEvent<SVGSVGElement>) {
+  function addZonePoint(event: MouseEvent<SVGSVGElement>) {
     if (!videoSize.width || !videoSize.height) return;
     const rect = event.currentTarget.getBoundingClientRect();
     const x = Math.max(0, Math.min(videoSize.width, ((event.clientX - rect.left) / rect.width) * videoSize.width));
