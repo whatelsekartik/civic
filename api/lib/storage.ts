@@ -33,7 +33,7 @@ export async function listJson<T>(prefix: string): Promise<T[]> {
 }
 export async function blobMetadata(pathname: string) {
   requireBlobStore();
-  return head(pathname, { access: "private" });
+  return head(pathname);
 }
 export async function deleteBlob(pathname: string): Promise<void> {
   requireBlobStore();
