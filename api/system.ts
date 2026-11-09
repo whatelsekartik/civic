@@ -8,7 +8,7 @@ export async function GET(request: Request): Promise<Response> {
   try { requireBlobStore(); blobConfigured = true; } catch { blobConfigured = false; }
   return Response.json({
     platform: "Vercel", mode: "cloud-first",
-    storage: blobConfigured ? "private Vercel Blob" : "not_configured",
+    storage: blobConfigured ? "private Vercel Blob · OIDC" : "not_configured",
     queue: "Vercel Queues", compute: "Vercel Sandbox · Python 3.13 · CPU",
     sandboxTimeoutMs: Number(process.env.CIVICWATCH_SANDBOX_TIMEOUT_MS || 45 * 60 * 1000),
     sandboxVcpus: Number(process.env.CIVICWATCH_SANDBOX_VCPUS || 2),
