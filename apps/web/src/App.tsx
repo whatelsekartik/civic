@@ -4,7 +4,7 @@ import {
   CheckCircle2, ChevronDown, CircleHelp, Clock3, Download,
   FileCheck2, Filter, HardDrive, LayoutDashboard,
   MapPin, Menu, MoreHorizontal, Plus, Radio, Search, Settings,
-  ShieldCheck, SlidersHorizontal, Sparkles, Wifi, X
+  ShieldCheck, SlidersHorizontal, Sparkles, Wifi, X, Moon, Sun
 } from "lucide-react";
 
 type Status = "Pending review" | "Verified" | "Forwarded" | "Resolved" | "Dismissed";
@@ -88,7 +88,7 @@ function App() {
       <main className="main">
         <header className="topbar">
           <div className="top-left"><button className="icon-btn menu-btn" onClick={()=>setMobileNav(true)} aria-label="Open navigation"><Menu size={19}/></button><span className="crumb">Workspace</span><span className="slash">/</span><b>{page}</b></div>
-          <div className="top-actions"><div className="env-pill"><span/> DEMO DATA</div><button className="icon-btn" onClick={()=>setNotice("No new notifications.")} aria-label="Notifications"><Bell size={17}/></button><button className="help-btn" onClick={()=>setNotice("CivicWatch is a human-reviewed civic issue monitoring prototype.")}><CircleHelp size={16}/><span>Help</span></button><button className="avatar-small">K</button></div>
+          <div className="top-actions"><button className="icon-btn" onClick={()=>setDark(v=>!v)} aria-label="Toggle theme" title="Toggle theme">{dark ? <Sun size={17}/> : <Moon size={17}/>}</button><div className="env-pill"><span/> DEMO DATA</div><button className="icon-btn" onClick={()=>setNotice("No new notifications.")} aria-label="Notifications"><Bell size={17}/></button><button className="help-btn" onClick={()=>setNotice("CivicWatch is a human-reviewed civic issue monitoring prototype.")}><CircleHelp size={16}/><span>Help</span></button><button className="avatar-small">K</button></div>
         </header>
 
         <div className="content">
@@ -96,7 +96,7 @@ function App() {
           {page==="Overview" && <>
             <div className="page-heading"><div><div className="eyebrow"><span className="eyebrow-line"/> MONITORING AT A GLANCE</div><h1>Good morning<span className="heading-period">.</span></h1><p className="subheading">A clear view of what’s happening across your monitored streets.</p></div><button className="button button-dark" onClick={()=>setPage("Monitoring")}><Plus size={16}/> Connect a source</button></div>
             <div className="notice-banner"><div className="notice-icon"><Activity size={18}/></div><div><b>Demo workspace · Local engine disconnected</b><p>Sample incidents below illustrate the workflow. No live cameras or AI processing are active.</p></div><button onClick={()=>setPage("Monitoring")}>Setup monitoring <ArrowUpRight size={14}/></button></div>
-            <section className="stats-grid">{stats.map((s,i)=><div className="stat-card" key={s.label}><div className="stat-top"><span>{s.label}</span><span className={`stat-icon ${s.tone}`}><s.icon size={17}/></span></div><div className="stat-value">{s.value}</div><div className="stat-foot">{s.delta}</div></div>)}</section>
+            <section className="stats-grid">{stats.map(s=><div className="stat-card" key={s.label}><div className="stat-top"><span>{s.label}</span><span className={`stat-icon ${s.tone}`}><s.icon size={17}/></span></div><div className="stat-value">{s.value}</div><div className="stat-foot">{s.delta}</div></div>)}</section>
             <section className="overview-grid">
               <div className="panel coverage-panel"><div className="panel-heading"><div><h2>Monitoring coverage</h2><p>Connected sources and their current state</p></div><button className="text-link" onClick={()=>setPage("Monitoring")}>Manage sources <ArrowUpRight size={14}/></button></div>
                 <div className="map-illustration"><div className="map-grid"/><svg className="map-lines" viewBox="0 0 640 260" preserveAspectRatio="none"><path d="M-20 180 C100 130 105 65 230 88 S390 210 660 65" fill="none" stroke="#b5c8bd" strokeWidth="20"/><path d="M-20 180 C100 130 105 65 230 88 S390 210 660 65" fill="none" stroke="#fff" strokeWidth="2" strokeDasharray="7 8"/><path d="M100 -20 C160 70 250 140 320 285 M440 -20 C410 65 390 155 520 280" fill="none" stroke="#c8d4cc" strokeWidth="15"/><path d="M100 -20 C160 70 250 140 320 285 M440 -20 C410 65 390 155 520 280" fill="none" stroke="#fff" strokeWidth="2" strokeDasharray="7 8"/></svg><div className="map-label label-one">FC Road</div><div className="map-label label-two">JM Road</div><div className="map-label label-three">Deccan</div><div className="map-pin pin-one"><Camera size={14}/></div><div className="map-pin pin-two"><Camera size={14}/></div><div className="map-pin pin-three"><Camera size={14}/></div><div className="map-legend"><span><i className="dot-green"/>Configured source</span><span><i className="dot-grey"/>Not connected</span></div><div className="map-corner">ILLUSTRATIVE COVERAGE · NOT LIVE</div></div>
