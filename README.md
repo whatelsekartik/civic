@@ -7,26 +7,26 @@ The MVP is designed around authorised existing CCTV/NVR infrastructure. CivicBot
 ## Run it on macOS
 
 1. Download this repository as a ZIP and extract it, or clone it:
-   \`git clone https://github.com/whatelsekartik/civic.git\`
-2. Open Terminal and move into the extracted \`civic\` folder.
+   `git clone https://github.com/whatelsekartik/civic.git`
+2. Open Terminal and move into the extracted `civic` folder.
 3. Run the one-time installer:
 
-   \`\`\`bash
+   ```bash
    chmod +x scripts/*.sh
    ./scripts/setup-mac.sh
-   \`\`\`
+   ```
 
 4. Start the app:
 
-   \`\`\`bash
+   ```bash
    ./scripts/start.sh
-   \`\`\`
+   ```
 
-5. Open **http://127.0.0.1:5173**. To stop it, run \`./scripts/stop.sh\`.
+5. Open **http://127.0.0.1:5173**. To stop it, run `./scripts/stop.sh`.
 
 The installer provisions Python 3.12 and Node.js 22 (using Homebrew if needed), installs dependencies and downloads the YOLO11 nano model. The first installation needs an internet connection. It can take a while because PyTorch and the model weights are large.
 
-You can also double-click the three \`.command\` launchers inside the \`scripts/\` folder after macOS allows them to run.
+You can also double-click the three `.command` launchers inside the `scripts/` folder after macOS allows them to run.
 
 ## The first video
 
@@ -54,7 +54,7 @@ Zones use normalised coordinates and should only be reused with footage from the
 - Candidates are not legally established offences. A person must inspect evidence before any report is forwarded.
 - The included pretrained model detects common objects such as cars, motorcycles, buses and trucks. Dedicated pothole and waste models are not installed.
 - Live RTSP camera ingestion, multi-user access control, calibrated speed detection, automatic department forwarding and CivicBot hardware are not implemented in this MVP.
-- Video and SQLite data stay on the local machine under \`~/.civicwatch/\`; model weights are stored in the repository's ignored \`models/\` directory.
+- Video and SQLite data stay on the local machine under `~/.civicwatch/`; model weights are stored in the repository's ignored `models/` directory.
 
 ## Vercel
 
