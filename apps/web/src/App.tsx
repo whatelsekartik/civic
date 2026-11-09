@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent } from "react";
 import {
   Activity, AlertCircle, ArrowDownToLine, ArrowUpRight, CheckCircle2,
   ChevronRight, Clapperboard, CloudUpload, FileVideo2,
   FolderOpen, HardDrive, LayoutDashboard, LoaderCircle, MapPin, Pause,
-  Play, Plus, RefreshCw, ShieldCheck, Trash2, Upload, Wifi, X
+  Play, Plus, RefreshCw, ShieldCheck, Trash2, Upload, Wifi, X, KeyRound, LogOut
 } from "lucide-react";
 import { api, type Incident, type IncidentStatus, type Job, type SystemInfo, type Zone } from "./api";
 
@@ -28,6 +28,13 @@ function errorMessage(error: unknown) {
 export default function App() {
   const [page, setPage] = useState<Page>("Overview");
   const [online, setOnline] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
+  const [authConfigured, setAuthConfigured] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
+  const [accessKey, setAccessKey] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [loginBusy, setLoginBusy] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [connectionError, setConnectionError] = useState("");
   const [system, setSystem] = useState<SystemInfo | null>(null);
   const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -51,6 +58,17 @@ export default function App() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  useEffect(() => {
+    api.auth().then((state) => {
+      setAuthConfigured(state.configured);
+      setAuthenticated(state.authenticated);
+      setAuthReady(true);
+    }).catch((error) => {
+      setAuthError(errorMessage(error));
+      setAuthReady(true);
+    });
+  }, []);
+
   const refresh = useCallback(async () => {
     try {
       const [health, systemInfo, incidentRows, zoneRows, jobRows] = await Promise.all([
@@ -69,15 +87,16 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!authenticated) return;
     void refresh();
     const timer = window.setInterval(() => void refresh(), 5000);
     return () => window.clearInterval(timer);
-  }, [refresh]);
+  }, [refresh, authenticated]);
 
   const activeJobId = activeJob?.id;
   const activeJobStatus = activeJob?.status;
   useEffect(() => {
-    if (!activeJobId || activeJobStatus === "completed" || activeJobStatus === "failed") return;
+    if (!authenticated || !activeJobId || activeJobStatus === "completed" || activeJobStatus === "failed") return;
     const timer = window.setInterval(async () => {
       try {
         const latest = await api.job(activeJobId);
@@ -94,7 +113,7 @@ export default function App() {
       }
     }, 1500);
     return () => window.clearInterval(timer);
-  }, [activeJobId, activeJobStatus, refresh]);
+  }, [activeJobId, activeJobStatus, refresh, authenticated]);
 
   useEffect(() => {
     if (!file) {
@@ -128,7 +147,7 @@ export default function App() {
       return;
     }
     if (next.size > 500 * 1024 * 1024) {
-      setNotice("This file is larger than the 500 MB local upload limit.");
+      setNotice("This file exceeds the 500 MB cloud upload limit.");
       return;
     }
     setFile(next);
@@ -178,14 +197,16 @@ export default function App() {
     setBusy(true);
     setNotice("");
     try {
-      const job = await api.analyse(file, selectedZoneIds);
+      const job = await api.analyse(file, selectedZoneIds, setUploadProgress);
       setActiveJob(job);
       setJobs((items) => [job, ...items.filter((item) => item.id !== job.id)]);
-      setNotice("Video uploaded. Analysis is running locally on this Mac.");
+      setNotice("Video uploaded to private Vercel Blob. Cloud analysis has been queued.");
+      setUploadProgress(100);
     } catch (error) {
-      setNotice("Upload failed: " + errorMessage(error));
+      setNotice("Cloud upload failed: " + errorMessage(error));
     } finally {
       setBusy(false);
+      setUploadProgress(0);
     }
   }
 
@@ -238,6 +259,33 @@ export default function App() {
 
   const statusTone = online ? "good" : "bad";
 
+  async function handleLogin(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setLoginBusy(true);
+    setAuthError("");
+    try {
+      await api.login(accessKey);
+      setAuthenticated(true);
+      setAccessKey("");
+    } catch (error) {
+      setAuthError(errorMessage(error));
+    } finally {
+      setLoginBusy(false);
+    }
+  }
+
+  async function handleLogout() {
+    try { await api.logout(); } catch (error) { setAuthError(errorMessage(error)); }
+    setAuthenticated(false);
+    setIncidents([]);
+    setJobs([]);
+    setZones([]);
+  }
+
+  if (!authReady) return <AccessScreen mode="loading" />;
+  if (!authConfigured) return <AccessScreen mode="setup" error={authError} />;
+  if (!authenticated) return <AccessScreen mode="login" accessKey={accessKey} setAccessKey={setAccessKey} onSubmit={handleLogin} busy={loginBusy} error={authError} />;
+
   return (
     <div className="cw-shell">
       <aside className="cw-sidebar">
@@ -245,7 +293,7 @@ export default function App() {
           <div className="cw-brand-mark"><ShieldCheck size={22} /></div>
           <div><strong>civicwatch</strong><span>INTELLIGENCE STUDIO</span></div>
         </div>
-        <div className="cw-workspace"><span className="cw-label">WORKSPACE</span><b>Local pilot</b><small>Runs on this Mac</small></div>
+        <div className="cw-workspace"><span className="cw-label">WORKSPACE</span><b>Cloud pilot</b><small>Runs on Vercel</small></div>
         <span className="cw-label cw-nav-label">OPERATIONS</span>
         <nav className="cw-nav">
           {navigation.map((item) => {
@@ -256,19 +304,19 @@ export default function App() {
           })}
         </nav>
         <div className="cw-sidebar-bottom">
-          <div className="cw-privacy"><ShieldCheck size={16} /><div><b>Local-first processing</b><p>Uploaded video stays on this machine.</p></div></div>
-          <div className="cw-version">CIVICWATCH · LOCAL MVP</div>
+          <div className="cw-privacy"><ShieldCheck size={16} /><div><b>Private cloud processing</b><p>Footage is stored in a private Blob store.</p></div></div>
+          <div className="cw-version">CIVICWATCH · VERCEL CLOUD MVP</div>
         </div>
       </aside>
 
       <main className="cw-main">
         <header className="cw-topbar">
           <div><span>Workspace</span><ChevronRight size={13} /><b>{page}</b></div>
-          <div className={"cw-connection " + statusTone}><i />{online ? "LOCAL API CONNECTED" : "LOCAL API OFFLINE"}</div>
+          <div className={"cw-connection " + statusTone}><i />{online ? "VERCEL API CONNECTED" : "VERCEL API OFFLINE"}</div><button className="cw-logout" onClick={() => void handleLogout()}><LogOut size={14} /> Sign out</button>
         </header>
 
         <div className="cw-content">
-          {!online && <div className="cw-offline"><Wifi size={18} /><div><b>The local engine is not running.</b><p>{connectionError || "Start CivicWatch on your Mac to enable uploads, AI analysis and incident storage."}</p></div><button onClick={() => void refresh()}><RefreshCw size={14} /> Retry</button></div>}
+          {!online && <div className="cw-offline"><Wifi size={18} /><div><b>Cloud services are not reachable.</b><p>{connectionError || "Check your Vercel deployment and configured storage/queue services."}</p></div><button onClick={() => void refresh()}><RefreshCw size={14} /> Retry</button></div>}
           {notice && <div className="cw-toast"><span>{notice}</span><button onClick={() => setNotice("")} aria-label="Dismiss"><X size={15} /></button></div>}
 
           {page === "Overview" && <>
@@ -283,15 +331,15 @@ export default function App() {
               <section className="cw-panel cw-start-panel">
                 <span className="cw-eyebrow">START HERE</span>
                 <h2>Analyse your first video.</h2>
-                <p>Pick a road CCTV recording, draw the relevant no-parking or obstruction area, then run local object detection and tracking.</p>
+                <p>Pick a road CCTV recording, draw the monitoring area, then run object detection and tracking in an isolated Vercel Sandbox.</p>
                 <button className="cw-primary" onClick={() => setPage("Analyse video")}><Upload size={16} /> Open video analysis</button>
                 <div className="cw-checks"><span><CheckCircle2 size={15} /> MP4 / MOV / AVI support</span><span><CheckCircle2 size={15} /> YOLO object detection</span><span><CheckCircle2 size={15} /> ByteTrack tracking</span><span><CheckCircle2 size={15} /> Human-reviewed incidents</span></div>
               </section>
               <section className="cw-panel">
-                <div className="cw-panel-title"><div><h2>Local AI engine</h2><p>Runtime status from this machine</p></div><span className={"cw-pill " + (online ? "good" : "bad")}>{online ? "Connected" : "Offline"}</span></div>
+                <div className="cw-panel-title"><div><h2>Local AI engine</h2><p>Runtime status from Vercel</p></div><span className={"cw-pill " + (online ? "good" : "bad")}>{online ? "Connected" : "Offline"}</span></div>
                 <div className="cw-system-row"><span>API service</span><b>{online ? "Running" : "Not running"}</b></div>
-                <div className="cw-system-row"><span>Compute device</span><b>{system?.models?.device || "—"}</b></div>
-                <div className="cw-system-row"><span>Vehicle model</span><b>{system?.models?.weights || "—"}</b></div>
+                <div className="cw-system-row"><span>Compute</span><b>{system?.compute || "—"}</b></div>
+                <div className="cw-system-row"><span>Vehicle model</span><b>{system?.models?.detector || "—"}</b></div>
                 <div className="cw-system-row"><span>Zones saved</span><b>{zones.length}</b></div>
                 <button className="cw-link" onClick={() => setPage("System")}>View system details <ArrowUpRight size={14} /></button>
               </section>
@@ -304,7 +352,7 @@ export default function App() {
           </>}
 
           {page === "Analyse video" && <>
-            <div className="cw-heading"><div><span className="cw-eyebrow">UPLOAD · DEFINE ZONES · ANALYSE</span><h1>Video analysis<span>.</span></h1><p>Process a recorded CCTV clip on this machine. No footage is sent to Vercel.</p></div></div>
+            <div className="cw-heading"><div><span className="cw-eyebrow">UPLOAD · DEFINE ZONES · ANALYSE</span><h1>Video analysis<span>.</span></h1><p>Upload a CCTV recording to private Vercel Blob, then analyse it in a cloud Sandbox.</p></div></div>
             <div className="cw-analysis-grid">
               <section className="cw-panel">
                 <div className="cw-panel-title"><div><h2>1. Choose a video</h2><p>MP4, MOV, AVI, MKV or M4V · Maximum 500 MB</p></div><FileVideo2 size={20} /></div>
@@ -312,7 +360,7 @@ export default function App() {
                   <input ref={fileInputRef} type="file" accept="video/mp4,video/quicktime,video/x-msvideo,video/x-matroska,.m4v" onChange={(event) => chooseFile(event.target.files?.[0] || null)} />
                   <div className="cw-drop-icon"><CloudUpload size={25} /></div>
                   <b>{file ? file.name : "Drop a video file here"}</b>
-                  <span>{file ? (file.size / (1024 * 1024)).toFixed(1) + " MB · Ready to analyse" : "or browse your Mac to select a recording"}</span>
+                  <span>{file ? (file.size / (1024 * 1024)).toFixed(1) + " MB · Ready to upload to private cloud storage" : "or browse your device to select a recording"}</span>
                   <button className="cw-secondary" onClick={() => fileInputRef.current?.click()}><FolderOpen size={15} /> Browse files</button>
                 </div>
                 {previewUrl && <div className="cw-preview-wrap">
@@ -341,9 +389,9 @@ export default function App() {
                 {zones.length === 0 ? <p className="cw-empty-small">No saved zones yet. Draw and save one above. You can still run object detection without a zone, but it will not create zone-based incident candidates.</p> :
                   <div className="cw-zone-select">{zones.map((zone) => <label key={zone.id} className="cw-zone-choice"><input type="checkbox" checked={!!zone.id && selectedZoneIds.includes(zone.id)} onChange={(event) => setSelectedZoneIds((items) => event.target.checked ? [...items, zone.id || ""].filter(Boolean) : items.filter((id) => id !== zone.id))} /><span><b>{zone.name}</b><small>{zone.zone_type.replaceAll("_", " ")} · {zone.dwell_seconds}s · {zone.points.length} points</small></span></label>)}</div>}
                 <button className="cw-primary cw-wide" onClick={() => void analyseVideo()} disabled={!online || !file || busy || (activeJob !== null && activeJob.status !== "completed" && activeJob.status !== "failed")}>
-                  {busy ? <LoaderCircle className="cw-spin" size={16} /> : <Activity size={16} />}{busy ? "Uploading…" : "Upload & analyse video"}
+                  {busy ? <LoaderCircle className="cw-spin" size={16} /> : <Activity size={16} />}{busy ? "Uploading " + uploadProgress + "%…" : "Upload & analyse in Vercel"}
                 </button>
-                <p className="cw-hint">Analysis runs on this Mac. The browser uploads the selected file to the local API at 127.0.0.1:8000.</p>
+                <p className="cw-hint">The browser uploads directly to private Vercel Blob. A Vercel Queue starts a Python 3.13 Sandbox for inference.</p>
               </section>
             </div>
             {activeJob && <section className="cw-panel cw-progress-panel">
@@ -374,22 +422,22 @@ export default function App() {
           </>}
 
           {page === "System" && <>
-            <div className="cw-heading"><div><span className="cw-eyebrow">LOCAL RUNTIME</span><h1>System status<span>.</span></h1><p>Diagnostics for this Mac and the local inference service.</p></div><button className="cw-secondary" onClick={() => void refresh()}><RefreshCw size={14} /> Refresh</button></div>
+            <div className="cw-heading"><div><span className="cw-eyebrow">VERCEL RUNTIME</span><h1>System status<span>.</span></h1><p>Diagnostics for cloud storage, queues and isolated inference.</p></div><button className="cw-secondary" onClick={() => void refresh()}><RefreshCw size={14} /> Refresh</button></div>
             <section className="cw-panel">
-              <div className="cw-panel-title"><div><h2>Service connection</h2><p>Local API · 127.0.0.1:8000</p></div><span className={"cw-pill " + (online ? "good" : "bad")}>{online ? "Online" : "Offline"}</span></div>
+              <div className="cw-panel-title"><div><h2>Cloud services</h2><p>Vercel Functions · Blob · Queues · Sandbox</p></div><span className={"cw-pill " + (online ? "good" : "bad")}>{online ? "Online" : "Offline"}</span></div>
               <div className="cw-system-row"><span>API</span><b>{online ? "Healthy" : connectionError || "Not reachable"}</b></div>
-              <div className="cw-system-row"><span>Database</span><b>{system?.database || "Unavailable"}</b></div>
-              <div className="cw-system-row"><span>Compute</span><b>{system?.models?.device || "Unknown"}</b></div>
-              <div className="cw-system-row"><span>Detector package</span><b>{system?.models?.detector || "Unknown"}</b></div>
-              <div className="cw-system-row"><span>Vehicle weights</span><b>{system?.models?.weights || "Unknown"}</b></div>
-              <div className="cw-system-row"><span>Tracker</span><b>{system?.models?.tracking || "Unknown"}</b></div>
+              <div className="cw-system-row"><span>Storage</span><b>{system?.storage || "Not configured"}</b></div>
+              <div className="cw-system-row"><span>Compute</span><b>{system?.compute || "Unknown"}</b></div>
+              <div className="cw-system-row"><span>Queue</span><b>{system?.queue || "Unknown"}</b></div>
+              <div className="cw-system-row"><span>Sandbox vCPU</span><b>{system?.sandboxVcpus || "Unknown"}</b></div>
+              <div className="cw-system-row"><span>Sandbox time limit</span><b>{system?.sandboxTimeoutMs ? Math.round(system.sandboxTimeoutMs / 60000) + " minutes" : "Unknown"}</b></div>
               <div className="cw-system-row"><span>Pothole model</span><b>{system?.models?.specialised_models?.pothole || "Not installed"}</b></div>
               <div className="cw-system-row"><span>Waste model</span><b>{system?.models?.specialised_models?.waste || "Not installed"}</b></div>
             </section>
-            <div className="cw-rule-note"><ShieldCheck size={16} /><p>Keep the API bound to 127.0.0.1. Do not expose it to the public internet or connect camera feeds unless you are authorised to access them. Face recognition and automatic challans are not part of this MVP.</p></div>
+            <div className="cw-rule-note"><ShieldCheck size={16} /><p>Uploaded footage is kept in a private Vercel Blob store. Use a strong shared access key and only upload recordings you are authorised to process. Face recognition and automatic challans are not part of this MVP.</p></div>
           </>}
         </div>
-        <footer className="cw-footer"><span>CIVICWATCH · LOCAL-FIRST CIVIC MONITORING</span><span>Human verification required <i /> {online ? "Engine ready" : "Engine offline"}</span></footer>
+        <footer className="cw-footer"><span>CIVICWATCH · VERCEL-NATIVE CLOUD MONITORING</span><span>Human verification required <i /> {online ? "Cloud ready" : "Cloud offline"}</span></footer>
       </main>
 
       {selectedIncident && <div className="cw-modal-backdrop" onClick={() => setSelectedIncident(null)}><section className="cw-modal" onClick={(event) => event.stopPropagation()}>
@@ -406,6 +454,41 @@ export default function App() {
       </section></div>}
     </div>
   );
+}
+
+
+function AccessScreen(props: {
+  mode: "loading" | "setup" | "login";
+  accessKey?: string;
+  setAccessKey?: (value: string) => void;
+  onSubmit?: (event: FormEvent<HTMLFormElement>) => void;
+  busy?: boolean;
+  error?: string;
+}) {
+  return <div className="cw-auth-shell">
+    <section className="cw-auth-card">
+      <div className="cw-brand-mark"><ShieldCheck size={24} /></div>
+      <span className="cw-eyebrow">CIVIC MONITORING WORKSPACE</span>
+      <h1>civicwatch<span>.</span></h1>
+      {props.mode === "loading" ? <>
+        <p>Connecting securely to your Vercel workspace…</p>
+      </> : props.mode === "setup" ? <>
+        <h2>Cloud access is not configured.</h2>
+        <p>Add the required environment variables to your Vercel project before using CivicWatch.</p>
+        <div className="cw-auth-code">CIVICWATCH_ACCESS_KEY<br />CIVICWATCH_SESSION_SECRET<br />CIVICWATCH_INTERNAL_SECRET</div>
+        <p className="cw-auth-error">{props.error || "Private Blob storage and Vercel Queues must also be connected."}</p>
+      </> : <>
+        <h2>Sign in to continue.</h2>
+        <p>Enter the private access key configured by the CivicWatch administrator.</p>
+        <form onSubmit={props.onSubmit}>
+          <label className="cw-field">Access key<input autoFocus type="password" autoComplete="current-password" value={props.accessKey || ""} onChange={(event) => props.setAccessKey?.(event.target.value)} placeholder="Enter access key" required /></label>
+          {props.error && <p className="cw-auth-error">{props.error}</p>}
+          <button className="cw-primary cw-wide" type="submit" disabled={props.busy || !props.accessKey}>{props.busy ? "Signing in…" : <><KeyRound size={15} /> Sign in</>}</button>
+        </form>
+      </>}
+      <div className="cw-auth-foot"><ShieldCheck size={14} /> Private workspace · Cloud inference</div>
+    </section>
+  </div>;
 }
 
 function JobList({ jobs }: { jobs: Job[] }) {
