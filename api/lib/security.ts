@@ -25,7 +25,13 @@ function cookieValue(request: Request): string | null {
   return null;
 }
 export function authConfigured(): boolean {
-  return Boolean(process.env.CIVICWATCH_ACCESS_KEY && process.env.CIVICWATCH_SESSION_SECRET && process.env.CIVICWATCH_SESSION_SECRET.length >= 32);
+  return Boolean(
+    process.env.CIVICWATCH_ACCESS_KEY &&
+    process.env.CIVICWATCH_SESSION_SECRET &&
+    process.env.CIVICWATCH_SESSION_SECRET.length >= 32 &&
+    process.env.CIVICWATCH_INTERNAL_SECRET &&
+    process.env.BLOB_READ_WRITE_TOKEN
+  );
 }
 export function verifyAccessKey(candidate: string): boolean {
   const expected = process.env.CIVICWATCH_ACCESS_KEY || "";
